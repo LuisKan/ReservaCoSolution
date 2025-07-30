@@ -17,6 +17,8 @@ using System.Net.Http;
 using System.Net;
 using iTextSharp.text;
 using iTextSharp.text.pdf;
+using System.Data.Entity;
+using System.Collections.Generic;
 
 namespace ReservaCo.Web.Controllers
 {
@@ -31,8 +33,8 @@ namespace ReservaCo.Web.Controllers
         {
             var context = new ReservaCoDbContext();
             _reservaService = new ReservaService(context);
-            _usuarioService = new UsuarioService(context);  
-            _espacioService = new EspacioService(context);  
+            _usuarioService = new UsuarioService(context);
+            _espacioService = new EspacioService(context);
         }
 
 
@@ -192,10 +194,21 @@ namespace ReservaCo.Web.Controllers
             return Ok();
         }
 
+        //exportar
         [HttpGet]
         [Route("exportar")]
-        public HttpResponseMessage ExportarReservasPDF()
+        public HttpResponseMessage ExportarReservasPDF(string rol)
         {
+            // Solo permitir acceso si el rol es Administrador
+            if (rol == null || rol.ToLower() != "administrador")
+            {
+                var responseUnauthorized = new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                {
+                    Content = new StringContent("No tiene permisos para exportar reservas.")
+                };
+                return responseUnauthorized;
+            }
+
             var reservas = _reservaService.ObtenerTodasLasReservas();
 
             using (var ms = new MemoryStream())
@@ -213,13 +226,12 @@ namespace ReservaCo.Web.Controllers
                 };
                 doc.Add(titulo);
 
-                // Tabla con 6 columnas
+                // Tabla
                 PdfPTable tabla = new PdfPTable(6)
                 {
                     WidthPercentage = 100
                 };
 
-                // Encabezados
                 tabla.AddCell("Fecha");
                 tabla.AddCell("Hora Inicio");
                 tabla.AddCell("Hora Fin");
@@ -227,7 +239,6 @@ namespace ReservaCo.Web.Controllers
                 tabla.AddCell("Usuario");
                 tabla.AddCell("Estado");
 
-                // Cuerpo
                 foreach (var r in reservas)
                 {
                     tabla.AddCell(r.Fecha.ToShortDateString());
@@ -254,6 +265,115 @@ namespace ReservaCo.Web.Controllers
                 return response;
             }
         }
+
+
+
+
+        ///api/Reservas/filtrar?periodo=semana
+        [HttpGet]
+        [Route("filtrar")]
+        public IHttpActionResult FiltrarReservasPorPeriodo(string periodo = "dia")
+        {
+            var reservas = _reservaService.ObtenerTodasLasReservas()
+                .ToList();
+
+            if (!reservas.Any())
+                return NotFound();
+
+            IEnumerable<IGrouping<string, Reserva>> agrupadas;
+
+            switch (periodo.ToLower())
+            {
+                case "semana":
+                    agrupadas = reservas
+                        .GroupBy(r => System.Globalization.CultureInfo.CurrentCulture.Calendar
+                            .GetWeekOfYear(r.Fecha, System.Globalization.CalendarWeekRule.FirstDay, DayOfWeek.Monday).ToString());
+                    break;
+
+                case "mes":
+                    agrupadas = reservas
+                        .GroupBy(r => r.Fecha.ToString("yyyy-MM"));
+                    break;
+
+                case "dia":
+                default:
+                    agrupadas = reservas
+                        .GroupBy(r => r.Fecha.ToString("yyyy-MM-dd"));
+                    break;
+            }
+
+            var resultado = agrupadas.Select(g => new
+            {
+                Agrupado = g.Key,
+                TotalReservas = g.Count(),
+                Reservas = g.Select(r => new
+                {
+                    r.Id,
+                    r.Fecha,
+                    HoraInicio = r.HoraInicio.ToString(@"hh\:mm"),
+                    HoraFin = r.HoraFin.ToString(@"hh\:mm"),
+                    Espacio = r.Espacio?.Nombre,
+                    Usuario = r.Usuario?.Nombre,
+                    Estado = r.Estado.ToString()
+                }).ToList()
+            });
+
+            return Ok(resultado);
+        }
+
+
+
+
+        [HttpGet]
+        [Route("filtrar-avanzado")]
+        public IHttpActionResult FiltrarAvanzado(string rol, int? usuarioId = null, string tipoEspacio = null, string estado = null)
+        {
+            // Validar rol correctamente (con coincidencia flexible)
+            if (!string.Equals(rol, "Administrador", StringComparison.InvariantCultureIgnoreCase) &&
+                !string.Equals(rol, "Coordinador", StringComparison.InvariantCultureIgnoreCase))
+            {
+                return Unauthorized();
+            }
+
+            var reservas = _reservaService.ObtenerTodasLasReservas().AsQueryable();
+
+            if (usuarioId.HasValue)
+                reservas = reservas.Where(r => r.Usuario.Id == usuarioId);
+
+            if (!string.IsNullOrEmpty(tipoEspacio))
+                reservas = reservas.Where(r => r.Espacio.Tipo.ToLower() == tipoEspacio.ToLower());
+
+            if (!string.IsNullOrEmpty(estado) && Enum.TryParse(estado, true, out EstadoReserva estadoEnum))
+                reservas = reservas.Where(r => r.Estado == estadoEnum);
+
+            // Convertir a memoria y luego hacer la proyección
+            var resultado = reservas
+                .ToList()
+                .Select(r => new ModeloReserva
+                {
+                    ID_Reserva = r.Id,
+                    Estado = r.Estado.ToString(),
+                    FechaCreacion = r.FechaCreacion,
+                    ID_Usuario = r.Usuario?.Id ?? 0,
+                    ID_Espacio = r.Espacio?.Id ?? 0,
+                    Fecha = r.Fecha,
+                    HoraInicio = r.HoraInicio,
+                    HoraFin = r.HoraFin,
+                    NombreUsuario = r.Usuario?.Nombre,
+                    NombreEspacio = r.Espacio?.Nombre
+                })
+                .ToList();
+
+            return Ok(resultado);
+        }
+
+
+        //GET /api/reservas/filtrar-avanzado?rol=admin&usuarioId=3&tipoEspacio=Auditorio&estado=Aprobada
+
+
+
+
+
 
     }
 }

@@ -93,7 +93,7 @@ namespace ReservaCo.Application.Services
             var reserva = _context.Reservas.Find(id);
             if (reserva != null)
             {
-                ReservaRules.Aprobar(reserva); // ← Aplicar lógica de dominio
+                ReservaRules.Aprobar(reserva); 
                 _context.SaveChanges();
             }
         }
@@ -103,7 +103,7 @@ namespace ReservaCo.Application.Services
             var reserva = _context.Reservas.Find(id);
             if (reserva != null)
             {
-                ReservaRules.Rechazar(reserva); // ← Aplicar lógica de dominio
+                ReservaRules.Rechazar(reserva); 
                 _context.SaveChanges();
             }
         }
