@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Web.Http;
+using System.Web.Http.Cors; // AÑADIR ESTA LÍNEA
 
 namespace ReservaCo.Web
 {
@@ -9,6 +10,10 @@ namespace ReservaCo.Web
     {
         public static void Register(HttpConfiguration config)
         {
+            // AÑADIR CORS ANTES DE TODO
+            var cors = new EnableCorsAttribute("http://localhost:3000", "*", "*");
+            config.EnableCors(cors);
+
             // Configuración y servicios de Web API
 
             // Rutas de Web API

@@ -12,7 +12,7 @@ namespace ReservaCo.Web
         protected void Application_Start()
         {
             GlobalConfiguration.Configure(WebApiConfig.Register);
+            // La configuración CORS ya está en WebApiConfig.Register
         }
-
     }
 }

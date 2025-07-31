@@ -20,17 +20,21 @@ namespace ReservaCo.Application.Services
 
         public List<Usuario> ObtenerUsuarios()
         {
-            return _context.Usuarios.ToList();
+            return _context.Usuarios
+        .Include(u => u.Rol) // 👈 esto es clave
+        .ToList();
         }
 
         public Usuario ObtenerUsuarioPorId(int id)
         {
-            return _context.Usuarios.Find(id);
+            return _context.Usuarios
+        .Include(u => u.Rol)
+        .FirstOrDefault(u => u.Id == id);
         }
 
         public void GuardarUsuario(Usuario usuario)
         {
-            var usuarios = _context.Usuarios.ToList(); 
+            var usuarios = _context.Usuarios.ToList();
             UsuarioRules.ValidarCorreoUnico(usuario.Email, usuarios, usuario.Id == 0 ? null : (int?)usuario.Id);
 
             if (usuario.Id == 0)
