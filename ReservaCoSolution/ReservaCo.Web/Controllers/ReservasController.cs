@@ -1,4 +1,16 @@
-﻿using System;
+﻿// ************************************************************************
+// Proyecto 02 
+// Aguilar Verónica, Guerrero Luis
+// Fecha de realización: 21/07/2025 
+// Fecha de entrega: 03/08/2025  
+// Resultados:
+// - Gestión completa de reservas mediante API REST
+// - Exportación de reservas en formato PDF
+// - Filtrado por periodo, estado, tipo de espacio y usuario
+// - Aprobación y rechazo de reservas por parte del administrador
+// ************************************************************************
+
+using System;
 using System.Linq;
 using System.Web.Http;
 using ReservaCo.Application.Service;
@@ -6,11 +18,9 @@ using ReservaCo.Application.Services;
 using ReservaCo.Domain.Entities;
 using ReservaCo.Infrastructure.Context;
 
-// Evita conflictos
+// Evita conflictos de nombres entre entidades y modelos de presentación
 using EntidadReserva = ReservaCo.Domain.Entities.Reserva;
 using ModeloReserva = ReservaCo.Web.Models.Reserva;
-
-
 
 using System.IO;
 using System.Net.Http;
@@ -22,13 +32,16 @@ using System.Collections.Generic;
 
 namespace ReservaCo.Web.Controllers
 {
+    // Define el prefijo para todas las rutas de este controlador
     [RoutePrefix("api/reservas")]
     public class ReservasController : ApiController
     {
+        // Servicios utilizados para lógica de negocio y acceso a datos
         private readonly ReservaService _reservaService;
         private readonly UsuarioService _usuarioService;
         private readonly EspacioService _espacioService;
 
+        // Constructor que inicializa los servicios con el contexto de datos
         public ReservasController()
         {
             var context = new ReservaCoDbContext();
@@ -37,19 +50,14 @@ namespace ReservaCo.Web.Controllers
             _espacioService = new EspacioService(context);
         }
 
-
-        // GET: api/reservas
+        // Método GET que retorna todas las reservas
         [HttpGet]
         [Route("")]
         public IHttpActionResult Get()
         {
             var reservas = _reservaService.ObtenerTodasLasReservas();
 
-            foreach (var r in reservas)
-            {
-                Console.WriteLine($"Reserva #{r.Id} - {r.Fecha.ToShortDateString()} - Usuario: {(r.Usuario?.Nombre ?? "NULL")} - Espacio: {(r.Espacio?.Nombre ?? "NULL")}");
-            }
-
+            // Proyección de entidades a modelos para respuesta
             var modelos = reservas.Select(r => new ModeloReserva
             {
                 ID_Reserva = r.Id,
@@ -67,7 +75,7 @@ namespace ReservaCo.Web.Controllers
             return Ok(modelos);
         }
 
-        // GET: api/reservas/5
+        // Método GET para obtener una reserva específica por ID
         [HttpGet]
         [Route("{id:int}")]
         public IHttpActionResult Get(int id)
@@ -93,7 +101,7 @@ namespace ReservaCo.Web.Controllers
             return Ok(model);
         }
 
-        // POST: api/reservas
+        // Método POST para registrar una nueva reserva
         [HttpPost]
         [Route("")]
         public IHttpActionResult Post(ModeloReserva model)
@@ -132,7 +140,7 @@ namespace ReservaCo.Web.Controllers
             return Ok(model);
         }
 
-        // PUT: api/reservas/5
+        // Método PUT para actualizar una reserva existente
         [HttpPut]
         [Route("{id:int}")]
         public IHttpActionResult Put(int id, ModeloReserva model)
@@ -158,12 +166,11 @@ namespace ReservaCo.Web.Controllers
                 return BadRequest("Estado no válido.");
             reserva.Estado = estadoEnum;
 
-
             _reservaService.GuardarReserva(reserva);
             return Ok(model);
         }
 
-        // DELETE: api/reservas/5
+        // Método DELETE para eliminar una reserva existente
         [HttpDelete]
         [Route("{id:int}")]
         public IHttpActionResult Delete(int id)
@@ -176,7 +183,7 @@ namespace ReservaCo.Web.Controllers
             return Ok();
         }
 
-        // POST: api/reservas/{id}/aprobar
+        // Método POST para aprobar una reserva por ID
         [HttpPost]
         [Route("{id:int}/aprobar")]
         public IHttpActionResult Aprobar(int id)
@@ -185,7 +192,7 @@ namespace ReservaCo.Web.Controllers
             return Ok();
         }
 
-        // POST: api/reservas/{id}/rechazar
+        // Método POST para rechazar una reserva por ID
         [HttpPost]
         [Route("{id:int}/rechazar")]
         public IHttpActionResult Rechazar(int id)
@@ -194,12 +201,11 @@ namespace ReservaCo.Web.Controllers
             return Ok();
         }
 
-        //exportar
+        // Método GET para exportar reservas a PDF (solo para administrador)
         [HttpGet]
         [Route("exportar")]
         public HttpResponseMessage ExportarReservasPDF(string rol)
         {
-            // Solo permitir acceso si el rol es Administrador
             if (rol == null || rol.ToLower() != "administrador")
             {
                 var responseUnauthorized = new HttpResponseMessage(HttpStatusCode.Unauthorized)
@@ -217,7 +223,6 @@ namespace ReservaCo.Web.Controllers
                 PdfWriter writer = PdfWriter.GetInstance(doc, ms);
                 doc.Open();
 
-                // Título
                 var titulo = new Paragraph("Lista de Reservas")
                 {
                     Alignment = Element.ALIGN_CENTER,
@@ -226,7 +231,6 @@ namespace ReservaCo.Web.Controllers
                 };
                 doc.Add(titulo);
 
-                // Tabla
                 PdfPTable tabla = new PdfPTable(6)
                 {
                     WidthPercentage = 100
@@ -266,22 +270,21 @@ namespace ReservaCo.Web.Controllers
             }
         }
 
-
-
-
-        ///api/Reservas/filtrar?periodo=semana
+        // GET: api/Reservas/filtrar?periodo=semana
         [HttpGet]
         [Route("filtrar")]
         public IHttpActionResult FiltrarReservasPorPeriodo(string periodo = "dia")
         {
-            var reservas = _reservaService.ObtenerTodasLasReservas()
-                .ToList();
+            // Obtener todas las reservas desde el servicio
+            var reservas = _reservaService.ObtenerTodasLasReservas().ToList();
 
+            // Verificar si existen reservas
             if (!reservas.Any())
                 return NotFound();
 
             IEnumerable<IGrouping<string, Reserva>> agrupadas;
 
+            // Agrupar las reservas según el periodo solicitado (día, semana, mes)
             switch (periodo.ToLower())
             {
                 case "semana":
@@ -302,6 +305,7 @@ namespace ReservaCo.Web.Controllers
                     break;
             }
 
+            // Proyectar el resultado con agrupación, conteo y detalles
             var resultado = agrupadas.Select(g => new
             {
                 Agrupado = g.Key,
@@ -321,20 +325,19 @@ namespace ReservaCo.Web.Controllers
             return Ok(resultado);
         }
 
-
-
-
+        // GET: api/reservas/filtrar-avanzado
         [HttpGet]
         [Route("filtrar-avanzado")]
         public IHttpActionResult FiltrarAvanzado(string rol, int? usuarioId = null, string tipoEspacio = null, string estado = null)
         {
-            // Validar rol correctamente (con coincidencia flexible)
+            // Validar el rol recibido (sólo Administrador o Coordinador tienen acceso)
             if (!string.Equals(rol, "Administrador", StringComparison.InvariantCultureIgnoreCase) &&
                 !string.Equals(rol, "Coordinador", StringComparison.InvariantCultureIgnoreCase))
             {
                 return Unauthorized();
             }
 
+            // Obtener todas las reservas y aplicar filtros dinámicos
             var reservas = _reservaService.ObtenerTodasLasReservas().AsQueryable();
 
             if (usuarioId.HasValue)
@@ -346,7 +349,7 @@ namespace ReservaCo.Web.Controllers
             if (!string.IsNullOrEmpty(estado) && Enum.TryParse(estado, true, out EstadoReserva estadoEnum))
                 reservas = reservas.Where(r => r.Estado == estadoEnum);
 
-            // Convertir a memoria y luego hacer la proyección
+            // Proyectar el resultado en memoria usando ModeloReserva
             var resultado = reservas
                 .ToList()
                 .Select(r => new ModeloReserva
@@ -367,24 +370,22 @@ namespace ReservaCo.Web.Controllers
             return Ok(resultado);
         }
 
-
-        //GET /api/reservas/filtrar-avanzado?rol=admin&usuarioId=3&tipoEspacio=Auditorio&estado=Aprobada
-
-
-
-        // GET: api/reservas/usuario/3
+        // GET: api/reservas/usuario/{id}
         [HttpGet]
         [Route("usuario/{id:int}")]
         public IHttpActionResult ObtenerReservasPorUsuario(int id)
         {
+            // Verificar si el usuario existe
             var usuario = _usuarioService.ObtenerUsuarioPorId(id);
             if (usuario == null)
                 return NotFound();
 
+            // Filtrar las reservas por usuario
             var reservas = _reservaService.ObtenerTodasLasReservas()
                 .Where(r => r.Usuario != null && r.Usuario.Id == id)
                 .ToList();
 
+            // Mapear a modelo
             var modelos = reservas.Select(r => new ModeloReserva
             {
                 ID_Reserva = r.Id,
@@ -402,19 +403,22 @@ namespace ReservaCo.Web.Controllers
             return Ok(modelos);
         }
 
-
+        // GET: api/reservas/historial/usuario/{id}
         [HttpGet]
         [Route("historial/usuario/{id:int}")]
         public IHttpActionResult HistorialPorUsuario(int id)
         {
+            // Verificar existencia del usuario
             var usuario = _usuarioService.ObtenerUsuarioPorId(id);
             if (usuario == null)
                 return NotFound();
 
+            // Filtrar las reservas históricas del usuario
             var reservas = _reservaService.ObtenerTodasLasReservas()
                 .Where(r => r.Usuario != null && r.Usuario.Id == id)
                 .ToList();
 
+            // Mapear a ModeloReserva
             var resultado = reservas.Select(r => new ModeloReserva
             {
                 ID_Reserva = r.Id,
@@ -432,18 +436,22 @@ namespace ReservaCo.Web.Controllers
             return Ok(resultado);
         }
 
+        // GET: api/reservas/historial/espacio/{id}
         [HttpGet]
         [Route("historial/espacio/{id:int}")]
         public IHttpActionResult HistorialPorEspacio(int id)
         {
+            // Verificar si el espacio existe
             var espacio = _espacioService.ObtenerEspacios().FirstOrDefault(e => e.Id == id);
             if (espacio == null)
                 return NotFound();
 
+            // Filtrar las reservas históricas por espacio
             var reservas = _reservaService.ObtenerTodasLasReservas()
                 .Where(r => r.Espacio != null && r.Espacio.Id == id)
                 .ToList();
 
+            // Mapear a ModeloReserva
             var resultado = reservas.Select(r => new ModeloReserva
             {
                 ID_Reserva = r.Id,
@@ -460,9 +468,6 @@ namespace ReservaCo.Web.Controllers
 
             return Ok(resultado);
         }
-
-
-
 
 
     }
