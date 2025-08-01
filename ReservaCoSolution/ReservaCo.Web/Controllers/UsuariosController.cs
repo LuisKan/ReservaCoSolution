@@ -3,6 +3,9 @@ using System.Linq;
 using System.Web.Http;
 using ReservaCo.Application.Services;
 using ReservaCo.Infrastructure.Context;
+using ReservaCo.Web.Models;
+using ReservaCo.Web.Utils;
+
 
 //------//
 using System.IO;
@@ -43,7 +46,7 @@ namespace ReservaCo.Web.Controllers
                 Apellido = u.Apellido,
                 Correo = u.Email,
                 Contraseña = u.Contrasenia,
-                Rol = u.Rol?.Nombre, // ✅ Obtiene solo el nombre
+                Rol = u.Rol?.Nombre, 
                 FechaCreacion = u.FechaCreacion
             }).ToList();
 
@@ -219,5 +222,54 @@ namespace ReservaCo.Web.Controllers
             }
         }
 
+        [HttpPost]
+        [Route("login")]
+        public IHttpActionResult Login(LoginRequest request)
+        {
+            var usuario = _usuarioService.ObtenerUsuarios()
+                .FirstOrDefault(u => u.Email.ToLower() == request.Correo.ToLower() &&
+                                     u.Contrasenia == request.Contraseña);
+
+            if (usuario == null)
+                return Unauthorized();
+
+            UsuarioSesion.UsuarioActual = usuario;
+
+            return Ok(new
+            {
+                Mensaje = "Inicio de sesión exitoso",
+                Usuario = new
+                {
+                    usuario.Id,
+                    usuario.Nombre,
+                    usuario.Apellido,
+                    usuario.Email,
+                    Rol = usuario.Rol?.Nombre
+                }
+            });
+        }
+
+        [HttpGet]
+        [Route("actual")]
+        public IHttpActionResult ObtenerUsuarioActual()
+        {
+            if (UsuarioSesion.UsuarioActual == null)
+                return Unauthorized();
+
+            var u = UsuarioSesion.UsuarioActual;
+            return Ok(new
+            {
+                u.Id,
+                u.Nombre,
+                u.Apellido,
+                u.Email,
+                Rol = u.Rol?.Nombre
+            });
+        }
+
+
+
     }
+
+
 }

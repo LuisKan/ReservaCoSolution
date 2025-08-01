@@ -372,6 +372,96 @@ namespace ReservaCo.Web.Controllers
 
 
 
+        // GET: api/reservas/usuario/3
+        [HttpGet]
+        [Route("usuario/{id:int}")]
+        public IHttpActionResult ObtenerReservasPorUsuario(int id)
+        {
+            var usuario = _usuarioService.ObtenerUsuarioPorId(id);
+            if (usuario == null)
+                return NotFound();
+
+            var reservas = _reservaService.ObtenerTodasLasReservas()
+                .Where(r => r.Usuario != null && r.Usuario.Id == id)
+                .ToList();
+
+            var modelos = reservas.Select(r => new ModeloReserva
+            {
+                ID_Reserva = r.Id,
+                Estado = r.Estado.ToString(),
+                FechaCreacion = r.FechaCreacion,
+                ID_Usuario = r.Usuario?.Id ?? 0,
+                ID_Espacio = r.Espacio?.Id ?? 0,
+                Fecha = r.Fecha,
+                HoraInicio = r.HoraInicio,
+                HoraFin = r.HoraFin,
+                NombreUsuario = r.Usuario?.Nombre,
+                NombreEspacio = r.Espacio?.Nombre
+            }).ToList();
+
+            return Ok(modelos);
+        }
+
+
+        [HttpGet]
+        [Route("historial/usuario/{id:int}")]
+        public IHttpActionResult HistorialPorUsuario(int id)
+        {
+            var usuario = _usuarioService.ObtenerUsuarioPorId(id);
+            if (usuario == null)
+                return NotFound();
+
+            var reservas = _reservaService.ObtenerTodasLasReservas()
+                .Where(r => r.Usuario != null && r.Usuario.Id == id)
+                .ToList();
+
+            var resultado = reservas.Select(r => new ModeloReserva
+            {
+                ID_Reserva = r.Id,
+                Estado = r.Estado.ToString(),
+                FechaCreacion = r.FechaCreacion,
+                ID_Usuario = r.Usuario?.Id ?? 0,
+                ID_Espacio = r.Espacio?.Id ?? 0,
+                Fecha = r.Fecha,
+                HoraInicio = r.HoraInicio,
+                HoraFin = r.HoraFin,
+                NombreUsuario = r.Usuario?.Nombre,
+                NombreEspacio = r.Espacio?.Nombre
+            }).ToList();
+
+            return Ok(resultado);
+        }
+
+        [HttpGet]
+        [Route("historial/espacio/{id:int}")]
+        public IHttpActionResult HistorialPorEspacio(int id)
+        {
+            var espacio = _espacioService.ObtenerEspacios().FirstOrDefault(e => e.Id == id);
+            if (espacio == null)
+                return NotFound();
+
+            var reservas = _reservaService.ObtenerTodasLasReservas()
+                .Where(r => r.Espacio != null && r.Espacio.Id == id)
+                .ToList();
+
+            var resultado = reservas.Select(r => new ModeloReserva
+            {
+                ID_Reserva = r.Id,
+                Estado = r.Estado.ToString(),
+                FechaCreacion = r.FechaCreacion,
+                ID_Usuario = r.Usuario?.Id ?? 0,
+                ID_Espacio = r.Espacio?.Id ?? 0,
+                Fecha = r.Fecha,
+                HoraInicio = r.HoraInicio,
+                HoraFin = r.HoraFin,
+                NombreUsuario = r.Usuario?.Nombre,
+                NombreEspacio = r.Espacio?.Nombre
+            }).ToList();
+
+            return Ok(resultado);
+        }
+
+
 
 
 
