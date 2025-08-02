@@ -469,6 +469,49 @@ namespace ReservaCo.Web.Controllers
             return Ok(resultado);
         }
 
+        // GET: api/espacios/disponibilidad
+        // Verifica si un espacio está disponible en una fecha y franja horaria determinada.
+        [HttpGet]
+        [Route("disponibilidad")]
+        public IHttpActionResult VerDisponibilidad(int espacioId, string fecha, string horaInicio, string horaFin)
+        {
+            // Intenta convertir el parámetro 'fecha' a tipo DateTime.
+            if (!DateTime.TryParse(fecha, out DateTime fechaParsed))
+                return BadRequest("Fecha inválida.");
+
+            // Intenta convertir 'horaInicio' a TimeSpan.
+            if (!TimeSpan.TryParse(horaInicio, out TimeSpan horaInicioParsed))
+                return BadRequest("Hora de inicio inválida.");
+
+            // Intenta convertir 'horaFin' a TimeSpan.
+            if (!TimeSpan.TryParse(horaFin, out TimeSpan horaFinParsed))
+                return BadRequest("Hora de fin inválida.");
+
+            // Verifica que la hora de inicio sea anterior a la hora de fin.
+            if (horaInicioParsed >= horaFinParsed)
+                return BadRequest("La hora de inicio debe ser menor que la hora de fin.");
+
+            // Busca el espacio por su ID.
+            var espacio = _espacioService.ObtenerEspacios().FirstOrDefault(e => e.Id == espacioId);
+            if (espacio == null)
+                return NotFound(); // Retorna 404 si el espacio no existe.
+
+            // Consulta al servicio si el espacio está disponible para la fecha y franja horaria indicadas.
+            bool disponible = _reservaService.ValidarDisponibilidad(fechaParsed, horaInicioParsed, horaFinParsed, espacioId);
+
+            // Devuelve un objeto JSON con los detalles de la consulta y el resultado de disponibilidad.
+            return Ok(new
+            {
+                Espacio = espacio.Nombre,
+                Fecha = fechaParsed.ToShortDateString(),
+                HoraInicio = horaInicioParsed.ToString(@"hh\:mm"),
+                HoraFin = horaFinParsed.ToString(@"hh\:mm"),
+                Disponible = disponible
+            });
+        }
+
+
+
 
     }
 }

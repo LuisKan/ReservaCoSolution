@@ -22,7 +22,7 @@ namespace ReservaCo.Domain.Entities
     {
         // Identificador único del espacio.
         public int Id { get; set; }
-
+        
         // Nombre asignado al espacio (ej. Aula B101, Lab Redes).
         public string Nombre { get; set; }
 

@@ -15,7 +15,7 @@ namespace ReservaCo.Infrastructure.Migrations
     using System.Data.Entity;
     using System.Data.Entity.Migrations;
     using System.Linq;
-
+    
     // Clase de configuración para las migraciones de Entity Framework.
     internal sealed class Configuration : DbMigrationsConfiguration<ReservaCo.Infrastructure.Context.ReservaCoDbContext>
     {
